@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile - Alumni Student Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="index.html" class="logo">Alumni Student Management System</a>
+            <div class="nav-buttons">
+                <!-- Profile Dropdown will be here, but for simplicity, a back button -->
+                <a href="#" id="backToDashboard" class="btn btn-outline">Back to Dashboard</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="dashboard">
+        <div class="container">
+            <!-- Profile Content -->
+            <div id="profileContainer" class="profile-container" style="display: none;">
+                
+                <div class="profile-header">
+                    <img id="profileAvatar" src="https://placehold.co/150x150/3b82f6/FFFFFF?text=User" alt="Profile Picture" class="profile-avatar">
+                    <div class="profile-header-info">
+                        <h1 id="profileName"></h1>
+                        <p id="profileRole" class="profile-role"></p>
+                        <button id="editProfileBtn" class="btn btn-primary" style="display: none;">Edit Profile</button>
+                    </div>
+                </div>
+
+                <div class="profile-grid">
+                    <!-- Contact Info Card -->
+                    <div class="profile-card">
+                        <h3>Contact Information</h3>
+                        <div class="profile-details-list">
+                            <div><strong>Email:</strong> <span id="profileEmail"></span></div>
+                            <div><strong>Phone:</strong> <span id="profilePhone"></span></div>
+                            <div><strong>Age:</strong> <span id="profileAge"></span></div>
+                        </div>
+                    </div>
+
+                    <!-- Role-Specific Card -->
+                    <div class="profile-card">
+                        <h3 id="roleCardTitle">Details</h3>
+                        <div id="roleSpecificDetails" class="profile-details-list">
+                            <!-- Content injected by JS -->
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Profile Edit Form (Modal-like) -->
+            <div id="editProfileModal" class="modal" style="display: none;">
+                <div class="modal-content-large">
+                    <span class="modal-close" id="closeEditModal">&times;</span>
+                    <h2>Edit Your Profile</h2>
+                    <form id="editProfileForm">
+                        
+                        <div class="form-group">
+                            <label for="editFullname">Full Name</label>
+                            <input type="text" id="editFullname" name="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="editPhone">Phone</label>
+                            <input type="text" id="editPhone" name="phone">
+                        </div>
+                        <div class="form-group">
+                            <label for="editAge">Age</label>
+                            <input type="number" id="editAge" name="age" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="editAvatarUrl">Profile Picture URL</label>
+                            <input type="url" id="editAvatarUrl" name="profile_picture_url" placeholder="https://...">
+                        </div>
+
+                        <!-- Role-specific edit fields -->
+                        <div id="editStudentFields" style="display: none;">
+                            <div class="form-group">
+                                <label for="editRollNumber">Roll Number</label>
+                                <input type="text" id="editRollNumber" name="roll_number">
+                            </div>
+                            <div class="form-group">
+                                <label for="editAdmissionYear">Admission Year</label>
+                                <input type="number" id="editAdmissionYear" name="admission_year" placeholder="e.g. 2021">
+                            </div>
+                            <div class="form-group">
+                                <label for="editGraduationYear">Graduation Year</label>
+                                <input type="number" id="editGraduationYear" name="graduation_year" placeholder="e.g. 2025">
+                            </div>
+                            <div class="form-group">
+                                <label for="editCurrentSemester">Current Semester</label>
+                                <input type="number" id="editCurrentSemester" name="current_semester" min="1" max="12">
+                            </div>
+                        </div>
+
+                        <div id="editAlumniFields" style="display: none;">
+                            <div class="form-group">
+                                <label for="editYearOfPass">Year of Passing</label>
+                                <input type="number" id="editYearOfPass" name="year_of_pass" placeholder="e.g. 2018">
+                            </div>
+                            <div class="form-group">
+                                <label for="editJobTitle">Job Title</label>
+                                <input type="text" id="editJobTitle" name="current_job_title">
+                            </div>
+                            <div class="form-group">
+                                <label for="editCompanyName">Company Name</label>
+                                <input type="text" id="editCompanyName" name="company_name">
+                            </div>
+                            <div class="form-group">
+                                <label for="editLocation">Location</label>
+                                <input type="text" id="editLocation" name="location">
+                            </div>
+                            <div class="form-group">
+                                <label for="editLinkedinUrl">LinkedIn URL</label>
+                                <input type="url" id="editLinkedinUrl" name="linkedin_url">
+                            </div>
+                            <div class="form-group">
+                                <label for="editWebsiteUrl">Website URL</label>
+                                <input type="url" id="editWebsiteUrl" name="website_url">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-full-width">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Loading/Error State -->
+            <div id="profileMessage" class="dashboard-header" style="text-align: center;">
+                <h1 id="profileMessageText">Loading Profile...</h1>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const API_BASE_URL = 'http://localhost:3000';
+            const currentUserId = localStorage.getItem('currentUserId');
+            const currentUserRole = localStorage.getItem('currentUserRole');
+
+            const params = new URLSearchParams(window.location.search);
+            const profileUserId = params.get('userId');
+
+            const backToDashboardBtn = document.getElementById('backToDashboard');
+            if (currentUserRole === 'student') {
+                backToDashboardBtn.href = 'student-dashboard.html';
+            } else if (currentUserRole === 'alumni') {
+                backToDashboardBtn.href = 'alumni-dashboard.html';
+            } else {
+                backToDashboardBtn.href = 'index.html'; // Fallback
+            }
+
+            const messageEl = document.getElementById('profileMessage');
+            const messageTextEl = document.getElementById('profileMessageText');
+            const profileContainerEl = document.getElementById('profileContainer');
+            const editProfileBtn = document.getElementById('editProfileBtn');
+            const editProfileModal = document.getElementById('editProfileModal');
+            const editProfileForm = document.getElementById('editProfileForm');
+            const closeEditModalBtn = document.getElementById('closeEditModal');
+
+            let isMyProfile = false;
+            let targetUserId = profileUserId;
+
+            if (!profileUserId) {
+                // Viewing my own profile
+                isMyProfile = true;
+                targetUserId = currentUserId;
+                editProfileBtn.style.display = 'block';
+            }
+
+            if (!targetUserId) {
+                messageTextEl.textContent = 'Error: No user specified and you are not logged in.';
+                return;
+            }
+
+            // --- DATA FETCHING ---
+            let profileData = null;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/profile/${targetUserId}`);
+                if (!res.ok) {
+                    const errData = await res.json();
+                    throw new Error(errData.error || `User not found (ID: ${targetUserId})`);
+                }
+                profileData = await res.json();
+                renderProfile(profileData);
+                messageEl.style.display = 'none';
+                profileContainerEl.style.display = 'block';
+
+            } catch (err) {
+                console.error('Failed to fetch profile:', err);
+                messageTextEl.textContent = err.message || 'Error loading profile.';
+            }
+
+            // --- RENDERING ---
+            function renderProfile(data) {
+                document.getElementById('profileAvatar').src = data.profile_picture_url || 'https://placehold.co/150x150/3b82f6/FFFFFF?text=User';
+                document.getElementById('profileAvatar').onerror = () => { 
+                    document.getElementById('profileAvatar').src = 'https://placehold.co/150x150/3b82f6/FFFFFF?text=User';
+                };
+                document.getElementById('profileName').textContent = data.username || 'N/A';
+                document.getElementById('profileRole').textContent = data.role ? data.role.charAt(0).toUpperCase() + data.role.slice(1) : 'N/A';
+                document.getElementById('profileEmail').textContent = data.email || 'N/A';
+                document.getElementById('profilePhone').textContent = data.phone_number || 'N/A';
+                document.getElementById('profileAge').textContent = data.age || 'N/A'; // Added Age
+
+                const roleDetailsEl = document.getElementById('roleSpecificDetails');
+                const roleCardTitleEl = document.getElementById('roleCardTitle');
+                
+                if (data.role === 'student') {
+                    roleCardTitleEl.textContent = 'Student Details';
+                    roleDetailsEl.innerHTML = `
+                        <div><strong>Department:</strong> ${data.department_name || 'N/A'}</div>
+                        <div><strong>Roll Number:</strong> ${data.roll_number || 'N/A'}</div>
+                        <div><strong>Admission Year:</strong> ${data.admission_year || 'N/A'}</div>
+                        <div><strong>Graduation Year:</strong> ${data.graduation_year || 'N/A'}</div>
+                        <div><strong>Current Semester:</strong> ${data.current_semester || 'N/A'}</div>
+                    `;
+                } else if (data.role === 'alumni') {
+                    roleCardTitleEl.textContent = 'Professional Details';
+                    roleDetailsEl.innerHTML = `
+                        <div><strong>Department:</strong> ${data.department_name || 'N/A'}</div>
+                        <div><strong>Year of Passing:</strong> ${data.year_of_pass || 'N/A'}</div>
+                        <div><strong>Job Title:</strong> ${data.current_job_title || 'N/A'}</div>
+                        <div><strong>Company:</strong> ${data.company_name || 'N/A'}</div>
+                        <div><strong>Location:</strong> ${data.location || 'N/A'}</div>
+                        <div><strong>LinkedIn:</strong> ${data.linkedin_url ? `<a href="${data.linkedin_url}" target="_blank">View Profile</a>` : 'N/A'}</div>
+                        <div><strong>Website:</strong> ${data.website_url ? `<a href="${data.website_url}" target="_blank">View Website</a>` : 'N/A'}</div>
+                    `;
+                } else {
+                    roleCardTitleEl.textContent = 'Details';
+                    roleDetailsEl.innerHTML = '<div>No role-specific details available.</div>';
+                }
+            }
+            
+            // --- EDIT FORM HANDLING ---
+            function populateEditForm(data) {
+                document.getElementById('editFullname').value = data.username || '';
+                document.getElementById('editPhone').value = data.phone_number || '';
+                document.getElementById('editAge').value = data.age || '';
+                document.getElementById('editAvatarUrl').value = data.profile_picture_url || '';
+
+                if (data.role === 'student') {
+                    document.getElementById('editStudentFields').style.display = 'block';
+                    document.getElementById('editAlumniFields').style.display = 'none';
+                    document.getElementById('editRollNumber').value = data.roll_number || '';
+                    document.getElementById('editAdmissionYear').value = data.admission_year || '';
+                    document.getElementById('editGraduationYear').value = data.graduation_year || '';
+                    document.getElementById('editCurrentSemester').value = data.current_semester || '';
+                } else if (data.role === 'alumni') {
+                    document.getElementById('editStudentFields').style.display = 'none';
+                    document.getElementById('editAlumniFields').style.display = 'block';
+                    document.getElementById('editYearOfPass').value = data.year_of_pass || '';
+                    document.getElementById('editJobTitle').value = data.current_job_title || '';
+                    document.getElementById('editCompanyName').value = data.company_name || '';
+                    document.getElementById('editLocation').value = data.location || '';
+                    document.getElementById('editLinkedinUrl').value = data.linkedin_url || '';
+                    document.getElementById('editWebsiteUrl').value = data.website_url || '';
+                }
+            }
+
+            editProfileBtn.addEventListener('click', () => {
+                if (profileData) {
+                    populateEditForm(profileData);
+                    editProfileModal.style.display = 'flex';
+                }
+            });
+
+            closeEditModalBtn.addEventListener('click', () => {
+                editProfileModal.style.display = 'none';
+            });
+
+            editProfileForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = new FormData(editProfileForm);
+                const updatedData = Object.fromEntries(formData.entries());
+                
+                // Add the critical IDs and role
+                updatedData.userId = currentUserId;
+                updatedData.role = currentUserRole;
+
+                // --- FIX for Internal Server Error ---
+                // Ensure all numeric fields are parsed to integers or set to null
+                // if the field is empty. Sending an empty string "" to an INT
+                // column will cause a database error.
+                const numericFields = [
+                    'age', 'admission_year', 'graduation_year', 'current_semester', 'year_of_pass'
+                ];
+                numericFields.forEach(field => {
+                    updatedData[field] = updatedData[field] ? parseInt(updatedData[field], 10) : null;
+                });
+                // --- END FIX ---
+
+                try {
+                    const res = await fetch(`${API_BASE_URL}/api/profile`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedData)
+                    });
+                    
+                    const result = await res.json();
+                    if (!res.ok) {
+                        throw new Error(result.message || 'Failed to update profile');
+                    }
+                    
+                    // Success
+                    editProfileModal.style.display = 'none';
+                    
+                    // Update username in localStorage if it changed
+                    if (profileData.username !== result.user.username) {
+                        localStorage.setItem('currentUserName', result.user.username);
+                    }
+                    
+                    // Re-fetch and re-render data
+                    profileData = await (await fetch(`${API_BASE_URL}/api/profile/${targetUserId}`)).json();
+                    renderProfile(profileData);
+
+                } catch (err) {
+                    console.error('Error updating profile:', err);
+                    alert(`Error: ${err.message}`);
+                }
+            });
+
+        });
+    </script>
+</body>
+</html>

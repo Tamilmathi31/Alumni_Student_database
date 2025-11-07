@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apply for Internships - Alumni Student Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Using styles.css now for consistency -->
+    <link rel="stylesheet" href="styles.css"> 
+</head>
+<body>
+    
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="index.html" class="logo">Alumni Student Management System</a>
+            <div class="nav-buttons">
+                 <!-- NEW PROFILE DROPDOWN -->
+                 <div class="profile-dropdown">
+                    <img src="https://placehold.co/40x40/3b82f6/FFFFFF?text=S" alt="Profile" id="navProfilePic" class="profile-avatar-btn">
+                    <div class="profile-dropdown-content">
+                        <a href="profile.html">My Profile</a>
+                        <a href="student-dashboard.html">Dashboard</a>
+                        <a href="#" onclick="logout()">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+   
+    <div class="dashboard">
+        <div class="container">
+            
+            <!-- NEW STUDENT DETAILS CARD -->
+            <div id="studentDetailsCard" class="card" style="margin-bottom: 2rem; padding: 1.5rem; background: #ffffff; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+                <h2 style="font-size: 1.5rem; font-weight: 600; color: #1e3a8a; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.75rem; margin-bottom: 1rem;">My Student Details</h2>
+                <div id="detailsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem;">
+                    <!-- Details will be injected here by JavaScript -->
+                    <p style="color: #6b7280;">Loading student information...</p>
+                </div>
+            </div>
+            <!-- END NEW STUDENT DETAILS CARD -->
+
+            <div class="dashboard-header">
+                <h1>Available Internships</h1>
+                <p>Explore and apply for internship opportunities posted by our alumni network</p>
+            </div>
+
+            
+            <div id="internshipsList" class="internships-list"></div>
+
+           
+            <div id="noInternships" class="no-data" style="display: none;">
+                <div class="card-icon">🔍</div>
+                <h2>No Internships Available Yet</h2>
+                <p>Check back soon! Alumni are constantly posting new opportunities.</p>
+            </div>
+        </div>
+    </div>
+
+   
+    <div id="applicationModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeApplicationModal()">&times;</span>
+            <div class="modal-icon">✓</div>
+            <h2>Application Submitted!</h2>
+            <p>Your application has been sent successfully.</p>
+            <button class="btn btn-primary" onclick="closeApplicationModal()">OK</button>
+        </div>
+    </div>
+
+    <!-- MODAL for application message -->
+    <div id="messageModal" class="modal">
+        <div class="modal-content" style="max-width: 500px; text-align: left;">
+            <span class="modal-close" onclick="closeMessageModal()">&times;</span>
+            <h2>Apply for <span id="modalInternshipTitle"></span></h2>
+            <p>Include a short message with your application (optional).</p>
+            <form id="applyForm">
+                <div class="form-group">
+                    <label for="applyMessage">Message</label>
+                    <textarea id="applyMessage" rows="4" placeholder="Why are you a good fit for this role?"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full-width">Submit Application</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Logout function for nav
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // Global var to hold internship ID for the modal
+        let currentApplyingInternshipId = null;
+        
+        /**
+         * @desc Renders the student's academic details on the page.
+         * @param {object} profile - The full profile object fetched from the API.
+         */
+        function renderStudentDetails(profile) {
+            const detailsGrid = document.getElementById('detailsGrid');
+            
+            // We only show academic details if the user is marked as a student
+            if (profile.role === 'student') {
+                const studentDetails = [
+                    { label: 'Department', value: profile.department_name || 'N/A' },
+                    { label: 'Roll Number', value: profile.roll_number || 'N/A' },
+                    { label: 'Admission Year', value: profile.admission_year || 'N/A' },
+                    { label: 'Graduation Year', value: profile.graduation_year || 'N/A' },
+                    { label: 'Current Semester', value: profile.current_semester || 'N/A' }
+                ];
+
+                detailsGrid.innerHTML = studentDetails.map(item => `
+                    <div style="padding: 0.75rem; background: #f1f8ff; border-radius: 0.5rem; font-size: 0.9rem;">
+                        <span style="display: block; font-weight: 500; color: #6b7280;">${item.label}</span>
+                        <strong style="display: block; font-size: 1rem; color: #1e3a8a;">${item.value}</strong>
+                    </div>
+                `).join('');
+
+            } else {
+                detailsGrid.innerHTML = `<p style="color: #6b7280;">Student academic details are not applicable for your account role.</p>`;
+            }
+        }
+
+
+        async function loadInternships() {
+            const internshipsList = document.getElementById('internshipsList');
+            const noInternships = document.getElementById('noInternships');
+            
+            // CRITICAL FIX: Use currentUserId as the primary source for the logged-in student's ID.
+            const userId = localStorage.getItem("currentUserId");
+            
+            // Check for validity
+            const isValidUserId = userId && userId !== 'null' && userId !== 'undefined';
+            
+            if (!isValidUserId) {
+                console.error("Authentication Error: Current User ID not found. Redirecting to login.");
+                alert("Error: Student ID not found. Please log in again.");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                // Fetch internships from backend
+                const res = await fetch("http://localhost:3000/api/internships");
+                if (!res.ok) throw new Error('Failed to fetch internships');
+                const internships = await res.json();
+
+                // Fetch student's applied internships using the verified userId
+                let appliedInternshipIds = [];
+                try {
+                    const appliedRes = await fetch(`http://localhost:3000/api/applications/${userId}`);
+                    if (!appliedRes.ok) throw new Error('Failed to fetch applications');
+                    const applied = await appliedRes.json();
+                    appliedInternshipIds = applied.map(a => a.internship_id);
+                } catch (e) {
+                    console.error("Failed to fetch applications (may be an empty list or server issue):", e);
+                    // Continue loading internships even if applications fail, but log the error
+                }
+
+
+                if (internships.length === 0) {
+                    noInternships.style.display = 'block';
+                    internshipsList.style.display = 'none';
+                    return;
+                }
+
+                noInternships.style.display = 'none';
+                internshipsList.style.display = 'grid'; // Make sure it's visible
+
+                internshipsList.innerHTML = internships.map(internship => {
+                    const hasApplied = appliedInternshipIds.includes(internship.id);
+                    const postedDate = new Date(internship.posteddate).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric'
+                    });
+
+                    // Handle potential null values
+                    const description = internship.description || 'No description provided.';
+                    const requirements = internship.requirements || 'No requirements listed.';
+                    const position = internship.position || 'N/A';
+                    const granterName = internship.grantername || 'Alumni';
+                    const granterProfilePic = internship.granterprofilepic || 'https://placehold.co/40x40/06b6d4/FFFFFF?text=A';
+
+                    // Rendering the internship card
+                    return `
+                        <div class="internship-card">
+                            <div class="internship-header">
+                                <div>
+                                    <h3>${internship.internshipname}</h3>
+                                    <h4>${internship.companyname}</h4>
+                                </div>
+                                <div class="posted-date">Posted ${postedDate}</div>
+                            </div>
+
+                            <div class="internship-details">
+                                <div class="detail-item"><span class="detail-icon">📍</span>${internship.location}</div>
+                                <div class="detail-item"><span class="detail-icon">💰</span>${internship.salary}</div>
+                                <div class="detail-item"><span class="detail-icon">⏱️</span>${internship.duration}</div>
+                                <div class="detail-item"><span class="detail-icon">💼</span>${position}</div>
+                            </div>
+
+                            <div class="internship-section">
+                                <h5>Description</h5>
+                                <p>${description.replace(/\n/g, '<br>')}</p>
+                            </div>
+
+                            <div class="internship-section">
+                                <h5>Requirements</h5>
+                                <p>${requirements.replace(/\n/g, '<br>')}</p>
+                            </div>
+
+                            <div class="internship-footer">
+                                <div class="posted-by">
+                                    <img src="${granterProfilePic}" alt="${granterName}" class="search-result-avatar" onerror="this.src='https://placehold.co/40x40'">
+                                    <span>Posted by: <strong>${granterName}</strong></span>
+                                </div>
+                                <button class="btn ${hasApplied ? 'btn-applied' : 'btn-primary'}"
+                                onclick="openApplicationModal(${internship.id}, '${internship.internshipname}')"
+                                ${hasApplied ? 'disabled' : ''}>
+                                ${hasApplied ? '✓ Applied' : 'Apply Now'}
+                                </button>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                internshipsList.innerHTML = `<p class="error-message">Failed to load internships. ${err.message}</p>`;
+            }
+        }
+
+        /**
+         * @desc Opens the message modal instead of applying directly.
+         */
+        function openApplicationModal(internshipId, internshipTitle) {
+            currentApplyingInternshipId = internshipId;
+            document.getElementById('modalInternshipTitle').textContent = internshipTitle;
+            document.getElementById('messageModal').style.display = 'flex';
+        }
+
+        /**
+         * @desc Submits the application from the message modal.
+         */
+        async function submitApplication(event) {
+            event.preventDefault();
+            const studentId = localStorage.getItem("currentUserId"); // Use currentUserId for consistency
+            const message = document.getElementById('applyMessage').value.trim();
+            const internshipId = currentApplyingInternshipId;
+            
+            // Check for valid studentId again before submitting
+            const isValidStudentId = studentId && studentId !== 'null' && studentId !== 'undefined';
+
+            if (!internshipId || !isValidStudentId) {
+                alert("Error: Missing data. Please log in and try again.");
+                return;
+            }
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/internships/${internshipId}/apply`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ student_id: parseInt(studentId), message }), // Pass ID as student_id to the server
+                });
+
+                const data = await res.json();
+                if (res.ok) {
+                    closeMessageModal();
+                    document.getElementById('applicationModal').style.display = 'flex'; // Show success modal
+                    loadInternships(); // Reload list to show "Applied"
+                } else {
+                    alert(data.message || "Failed to apply.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error applying for internship.");
+            }
+        }
+
+        function closeApplicationModal() {
+            document.getElementById('applicationModal').style.display = 'none';
+        }
+
+        function closeMessageModal() {
+            document.getElementById('messageModal').style.display = 'none';
+            document.getElementById('applyForm').reset();
+            currentApplyingInternshipId = null;
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Load nav profile pic and student details
+            const navProfilePic = document.getElementById('navProfilePic');
+            const currentUserId = localStorage.getItem('currentUserId');
+            
+            if (currentUserId) {
+                fetch(`http://localhost:3000/api/profile/${currentUserId}`)
+                    .then(res => res.json())
+                    .then(profile => {
+                        // 1. Update navigation profile picture
+                        if (profile && profile.profile_picture_url) {
+                            navProfilePic.src = profile.profile_picture_url;
+                        }
+                        // 2. Render student academic details
+                        if (profile) {
+                            renderStudentDetails(profile);
+                        }
+                    })
+                    .catch(err => console.error('Error loading profile data:', err));
+            }
+            
+            // Add listener for the application form
+            document.getElementById('applyForm').addEventListener('submit', submitApplication);
+            
+            // Load internships
+            loadInternships();
+        });
+
+    </script>
+</body>
+</html>

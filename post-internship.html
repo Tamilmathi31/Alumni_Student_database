@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Internship - Alumni Student Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Using styles.css now for consistency -->
+    <link rel="stylesheet" href="styles.css"> 
+</head>
+<body>
+    
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="index.html" class="logo">Alumni Student Management System</a>
+            <div class="nav-buttons">
+                 <!-- NEW PROFILE DROPDOWN -->
+                 <div class="profile-dropdown">
+                    <img src="https://placehold.co/40x40/06b6d4/FFFFFF?text=A" alt="Profile" id="navProfilePic" class="profile-avatar-btn">
+                    <div class="profile-dropdown-content">
+                        <a href="profile.html">My Profile</a>
+                        <a href="alumni-dashboard.html">Dashboard</a>
+                        <a href="#" onclick="logout()">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+   
+    <div class="dashboard">
+        <div class="container">
+            
+            <!-- Internship Form (now always visible) -->
+            <div id="internshipForm" class="internship-form">
+                <div class="form-card" style="max-width: 800px; margin: 2rem auto;">
+                    <div style="text-align: center; margin-bottom: 2rem;">
+                        <div class="card-icon">💼</div>
+                        <h2>Post Internship Opportunity</h2>
+                        <p>Fill in the details below to share an opportunity with students.</p>
+                    </div>
+                    
+                    <!-- BUG FIX: Pointing onsubmit to the correct async function -->
+                    <form onsubmit="submitInternship(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="internshipName">Internship Title *</label>
+                                <input type="text" id="internshipName" name="internshipName" 
+                                       placeholder="e.g., Software Development Intern" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="companyName">Company Name *</label>
+                                <input type="text" id="companyName" name="companyName" 
+                                       placeholder="Your Company Name" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="location">Location *</label>
+                                <input type="text" id="location" name="location" 
+                                       placeholder="e.g., New York, NY / Remote" required>
+                            </div>
+
+                             <div class="form-group">
+                                <label for="position">Position Type *</label>
+                                <input type="text" id="position" name="position" 
+                                       placeholder="e.g., Full-time, Part-time" required>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="salary">Salary/Stipend *</label>
+                                <input type="text" id="salary" name="salary" 
+                                       placeholder="e.g., $20/hour or $2000/month" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="duration">Duration *</label>
+                                <input type="text" id="duration" name="duration" 
+                                       placeholder="e.g., 3 months, 6 months" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="description">Job Description *</label>
+                            <textarea id="description" name="description" rows="5" 
+                                      placeholder="Describe the internship role, responsibilities, and what the intern will learn..." required></textarea>
+                        </div>
+
+                        <!-- NEW/FIXED Field -->
+                        <div class="form-group">
+                            <label for="requirements">Requirements *</label>
+                            <textarea id="requirements" name="requirements" rows="5" 
+                                      placeholder="List the required skills, qualifications, and experience..." required></textarea>
+                        </div>
+
+                        <div class="form-actions" style="gap: 1rem; margin-top: 2rem;">
+                            <button type="submit" class="btn btn-primary" style="flex: 2;">Post Internship</button>
+                            <button type="button" class="btn btn-outline" style="flex: 1;" onclick="window.location.href='alumni-dashboard.html'">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeModal()">&times;</span>
+            <div class="modal-icon">✓</div>
+            <h2>Success!</h2>
+            <p>Your internship has been posted successfully.</p>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Logout function for nav
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // Load profile pic for nav
+        document.addEventListener('DOMContentLoaded', async () => {
+            const navProfilePic = document.getElementById('navProfilePic');
+            const currentUserId = localStorage.getItem('currentUserId');
+            if (currentUserId) {
+                try {
+                    const res = await fetch(`http://localhost:3000/api/profile/${currentUserId}`);
+                    if (res.ok) {
+                        const profile = await res.json();
+                        if(profile.profile_picture_url) {
+                            navProfilePic.src = profile.profile_picture_url;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading nav profile pic:', error);
+                }
+            }
+        });
+
+
+        // BUG FIX: Removed the old, non-async submitInternship function.
+        // This is now the ONLY submitInternship function.
+
+        /**
+         * @desc Submits the internship form data to the server.
+         */
+        async function submitInternship(event) {
+            event.preventDefault();
+
+            const alumniId = localStorage.getItem("alumniId"); 
+            if (!alumniId) {
+                alert("Error: You are not logged in. Please log in again.");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Updated data object to include new fields
+            const internshipData = {
+                alumni_id: parseInt(alumniId), // Ensure it's a number
+                title: document.getElementById('internshipName').value,
+                description: document.getElementById('description').value,
+                company_name: document.getElementById('companyName').value,
+                location: document.getElementById('location').value,
+                duration: document.getElementById('duration').value,
+                stipend: document.getElementById('salary').value,
+                position: document.getElementById('position').value,        // NEW
+                requirements: document.getElementById('requirements').value,  // NEW
+            };
+
+            try {
+                const res = await fetch("http://localhost:3000/api/internships", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(internshipData),
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('successModal').style.display = 'flex';
+                    event.target.reset();
+                } else {
+                    alert(data.error || "Failed to post internship. Check all fields.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Server error. Please try again later.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('successModal').style.display = 'none';
+            // Optional: redirect back to dashboard after success
+            window.location.href = 'alumni-dashboard.html';
+        }
+    </script>
+</body>
+</html>

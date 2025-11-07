@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alumni Dashboard - Alumni Student Management System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <script src="/socket.io/socket.io.js"></script>
+
+</head>
+<!-- NEW: Added dashboard-page class for styling -->
+<body class="dashboard-page">
+
+    <!-- GLOBAL TOAST NOTIFICATION -->
+    <div id="toastNotification" class="toast">
+        <span id="toastMessage"></span>
+    </div>
+   
+    <nav class="navbar">
+        <div class="navbar-content">
+            <a href="index.html" class="logo">Alumni Student Management System</a>
+            <div class="nav-buttons">
+                <!-- MODIFICATION: Replaced simple logout with full profile dropdown -->
+                 <div class="profile-dropdown">
+                    <img src="https://placehold.co/40x40/06b6d4/FFFFFF?text=A" alt="Profile" id="navProfilePic" class="profile-avatar-btn">
+                    <div class="profile-dropdown-content">
+                        <!-- Links to "My Profile" (profile.html) and back to this dashboard -->
+                        <a href="profile.html">My Profile</a>
+                        <a href="alumni-dashboard.html">Dashboard</a>
+                        <a href="#" onclick="logout()">Logout</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    
+    <div class="dashboard">
+        <div class="container">
+             <!-- NEW: Added alumni-header class for styling -->
+            <div class="dashboard-header alumni-header">
+                <h1>Alumni Dashboard</h1>
+                <h2 id="welcomeHeader" class="welcome-text"></h2>
+                <p>Manage your contributions, mentorship activities, and network</p>
+
+                <!-- NEW SEARCH BAR -->
+                <div class="search-container">
+                    <input type="text" id="userSearchInput" class="search-input" placeholder="Find students or alumni by name...">
+                    <button id="userSearchBtn" class="btn btn-secondary">Search</button>
+                </div>
+            </div>
+
+             <!-- NEW SEARCH RESULTS CONTAINER -->
+            <div id="searchResults" class="search-results-container" style="display: none;">
+                <h3>Search Results</h3>
+                <ul id="searchResultsList" class="search-results-list"></ul>
+                <p id="noResultsMessage" style="display: none;">No users found matching your search.</p>
+            </div>
+
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Students Mentored</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="stats-internships">0</div>
+                    <div class="stat-label">Internships Posted</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Events Hosted</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">0</div>
+                    <div class="stat-label">Scholarships Funded</div>
+                </div>
+            </div>
+
+            
+            <div class="dashboard-grid">
+                <div class="dashboard-card">
+                    <div class="card-icon">💼</div> <!-- Changed icon -->
+                    <h3>Offer Internships</h3>
+                    <p>Post internship opportunities at your company for talented students</p>
+                    <a href="post-internship.html" class="btn btn-secondary">Post Internship</a>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-icon">🧑‍🏫</div> <!-- Changed icon -->
+                    <h3>Mentor Students</h3>
+                    <p>Provide career guidance to students seeking mentorship. Find them via search!</p>
+                    <a href="#" class="btn btn-secondary" onclick="document.getElementById('userSearchInput').focus()">Find Students</a>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-icon">🎓</div> <!-- Changed icon -->
+                    <h3>Provide Scholarships</h3>
+                    <p>Create and fund scholarship opportunities for deserving students in need</p>
+                    <a href="#" class="btn btn-secondary">Create Scholarship</a>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-icon">📅</div> <!-- Changed icon -->
+                    <h3>Host Events</h3>
+                    <p>Organize networking events, workshops, and seminars for student engagement</p>
+                    <a href="#" class="btn btn-secondary">Create Event</a>
+                </div>
+                
+                <div class="dashboard-card">
+                    <div class="card-icon">🤝</div> <!-- Changed icon -->
+                    <h3>Alumni Network</h3>
+                    <p>Browse and connect with fellow alumni. Use the search bar above to find anyone.</p>
+                    <a href="#" class="btn btn-secondary" onclick="document.getElementById('userSearchInput').focus()">Search Network</a>
+                </div>
+
+                <div class="dashboard-card">
+                    <div class="card-icon">📈</div> <!-- Changed icon -->
+                    <h3>Impact Analytics</h3>
+                    <p>Track your contributions and see the impact you're making on students' lives</p>
+                    <a href="#" class="btn btn-secondary">View Analytics</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+<!-- MOVED CHAT HTML to be outside .dashboard div -->
+<div class="chat-icon" id="chatIcon">💬</div> <!-- Changed icon -->
+
+<div class="chat-main-container" id="chatMainContainer">
+    <!-- User List Sidebar -->
+    <div class="user-list-sidebar">
+        <h3>Chat</h3>
+        <ul id="userList" class="user-list">
+            <li class="user-list-placeholder">Loading users...</li>
+        </ul>
+    </div>
+
+    <!-- Chat Message Box -->
+    <div id="chatSidebar" class="chat-sidebar">
+        <div class="chat-header">
+            <span id="chatRecipientName">Select a user to chat</span>
+            <button id="closeChat" class="close-chat">&times;</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <p class="chat-placeholder">Your messages will appear here.</p>
+        </div>
+        <div class="chat-input-area">
+            <input type="text" id="chatInput" placeholder="Type a message..." disabled/>
+            <button id="sendBtn" class="btn-send" disabled>Send</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+    // NEW: Toast Notification Function
+    let toastTimeout;
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toastNotification');
+        const toastMessage = document.getElementById('toastMessage');
+        
+        toastMessage.textContent = message;
+        toast.className = 'toast show'; // Reset classes and show
+        
+        if (type === 'error') {
+            toast.classList.add('error');
+        } else {
+            toast.classList.add('success');
+        }
+
+        // Clear existing timeout if one exists
+        clearTimeout(toastTimeout);
+
+        // Hide after 3 seconds
+        toastTimeout = setTimeout(() => {
+            toast.classList.remove('show');
+        }, 3000);
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'index.html';
+    }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Configuration and State ---
+    const API_BASE_URL = 'http://localhost:3000';
+    const CURRENT_USER_ID = localStorage.getItem('currentUserId');
+    const CURRENT_USER_NAME = localStorage.getItem('currentUserName');
+    const CURRENT_ALUMNI_ID = localStorage.getItem('alumniId'); // For stats
+
+    let currentReceiverId = null;
+    let socket = null;
+
+    // --- Authentication Check ---
+    if (!CURRENT_USER_ID || !CURRENT_USER_NAME || !CURRENT_ALUMNI_ID) {
+        // Use alert() for critical auth failure
+        showToast('Session expired or user data not found. Please log in again.', 'error');
+        // Delay redirect slightly to allow toast to be seen
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 2000);
+        return;
+    }
+    
+    // --- DOM Elements ---
+    document.getElementById('welcomeHeader').textContent = `Welcome, ${CURRENT_USER_NAME}!`;
+    
+    // Chat Elements
+    const chatIconEl = document.getElementById('chatIcon');
+    const chatMainContainerEl = document.getElementById('chatMainContainer');
+    const userListEl = document.getElementById('userList');
+    const chatSidebarEl = document.getElementById('chatSidebar');
+    const chatRecipientNameEl = document.getElementById('chatRecipientName');
+    const chatMessagesEl = document.getElementById('chatMessages');
+    const chatInputEl = document.getElementById('chatInput');
+    const sendBtnEl = document.getElementById('sendBtn');
+    const closeChatBtnEl = document.getElementById('closeChat');
+
+    // Search Elements
+    const searchInputEl = document.getElementById('userSearchInput');
+    const searchBtnEl = document.getElementById('userSearchBtn');
+    const searchResultsContainerEl = document.getElementById('searchResults');
+    const searchResultsListEl = document.getElementById('searchResultsList');
+    const noResultsMessageEl = document.getElementById('noResultsMessage');
+
+    // Stats Elements
+    const statsInternshipsEl = document.getElementById('stats-internships');
+
+    // --- Core Functions ---
+
+    /**
+     * Connects to WebSocket server and sets up listeners.
+     */
+    function connectToSocket() {
+        socket = io(API_BASE_URL);
+
+        socket.on('connect', () => {
+            console.log('Connected to WebSocket server!');
+            socket.emit('join_chat', CURRENT_USER_ID);
+        });
+
+        socket.on('new_message', (message) => {
+            if (message.sender_id == currentReceiverId || message.sender_id == CURRENT_USER_ID) {
+                displayMessage(message);
+            }
+        });
+
+        socket.on('disconnect', () => {
+            console.log('Disconnected from WebSocket server.');
+        });
+    }
+
+    /**
+     * Fetches all users (for chat list) and populates the sidebar list.
+     */
+    async function fetchAndDisplayUsers() {
+        try {
+            const response = await fetch(`${API_BASE_URL}/users?currentUserId=${CURRENT_USER_ID}`);
+            if (!response.ok) throw new Error('Failed to fetch users');
+            
+            const users = await response.json();
+            userListEl.innerHTML = ''; // Clear placeholder
+
+            if (users.length === 0) {
+                 userListEl.innerHTML = '<li class="user-list-placeholder">No other users to chat with.</li>';
+                 return;
+            }
+
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.className = 'user-item';
+                li.innerHTML = `<strong>${user.name}</strong> <span class="role">(${user.role})</span>`;
+                li.setAttribute('data-user-id', user.user_id);
+                li.setAttribute('data-user-name', user.name);
+                li.addEventListener('click', () => openChat(user.user_id, user.name));
+                userListEl.appendChild(li);
+            });
+        } catch (error) {
+            console.error('Failed to fetch user list:', error);
+            userListEl.innerHTML = '<li class="user-list-placeholder error">Error loading users.</li>';
+        }
+    }
+
+    /**
+     * Initializes chat with a selected user.
+     */
+    async function openChat(userId, userName) {
+        if (!userId || !userName) return;
+        
+        currentReceiverId = userId;
+
+        // Highlight active user in chat list
+        document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
+        const activeUserEl = document.querySelector(`.user-item[data-user-id='${userId}']`);
+        if (activeUserEl) {
+            activeUserEl.classList.add('active');
+        }
+        
+        // Highlight active user in search results (if they exist)
+        document.querySelectorAll('.search-result-item').forEach(item => item.classList.remove('active-chat'));
+         const activeSearchEl = document.querySelector(`.search-result-item[data-user-id='${userId}']`);
+        if (activeSearchEl) {
+            activeSearchEl.classList.add('active-chat'); // You may need to style .active-chat
+        }
+
+        chatRecipientNameEl.textContent = `Chat with ${userName}`;
+        chatInputEl.disabled = false;
+        sendBtnEl.disabled = false;
+        
+        // Open the chat window containers
+        chatMainContainerEl.classList.add('open'); // Open main floating window
+        chatSidebarEl.classList.add('open'); // Slide in the message panel
+        
+        chatMessagesEl.innerHTML = '<p class="chat-placeholder">Loading messages...</p>'; 
+
+        await loadMessages();
+        chatInputEl.focus();
+    }
+
+    /**
+     * Fetches and displays historical messages for the current conversation.
+     */
+    async function loadMessages() {
+        if (!currentReceiverId) return;
+        try {
+            const url = `${API_BASE_URL}/messages/get/${CURRENT_USER_ID}/${currentReceiverId}`;
+            const res = await fetch(url);
+            const messages = await res.json();
+            
+            chatMessagesEl.innerHTML = '';
+            if (messages.length === 0) {
+                chatMessagesEl.innerHTML = '<p class="chat-placeholder">No messages yet. Start the conversation!</p>';
+                return;
+            }
+            messages.forEach(displayMessage);
+        } catch (error) {
+            console.error('Error loading messages:', error);
+            chatMessagesEl.innerHTML = '<p class="chat-placeholder error">Could not load messages.</p>';
+        }
+    }
+    
+    /**
+     * Appends a single message to the chat window.
+     */
+    function displayMessage(message) {
+        // Clear placeholder if it exists
+        const placeholder = chatMessagesEl.querySelector('.chat-placeholder');
+        if (placeholder) placeholder.remove();
+
+        const msgDiv = document.createElement('div');
+        msgDiv.classList.add('chat-message');
+        msgDiv.classList.add(message.sender_id == CURRENT_USER_ID ? 'user-message' : 'other-message');
+        msgDiv.textContent = message.message_text;
+        chatMessagesEl.appendChild(msgDiv);
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    /**
+     * Sends a message via API POST request.
+     */
+    async function sendMessage() {
+        const messageText = chatInputEl.value.trim();
+        if (messageText === "" || !currentReceiverId) return;
+
+        try {
+            const payload = {
+                sender_id: parseInt(CURRENT_USER_ID),
+                receiver_id: parseInt(currentReceiverId),
+                message_text: messageText
+            };
+
+            // Note: The message will be displayed via the socket 'new_message' event
+            await fetch(`${API_BASE_URL}/messages/send`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            
+            chatInputEl.value = ''; // Clear input field
+            chatInputEl.focus();
+
+        } catch (error) {
+            console.error('Network error sending message:', error);
+            // Optionally show a small error indicator next to the message
+        }
+    }
+
+    // --- NEW SEARCH FUNCTIONS ---
+
+    /**
+     * Handles the user search action.
+     */
+    async function handleUserSearch() {
+        const searchTerm = searchInputEl.value.trim();
+        if (searchTerm.length < 2) { 
+            searchResultsListEl.innerHTML = '';
+            noResultsMessageEl.textContent = 'Please enter at least 2 characters.';
+            noResultsMessageEl.style.display = 'block';
+            searchResultsContainerEl.style.display = 'block';
+            return;
+        }
+
+        try {
+            const url = `${API_BASE_URL}/api/search-users?query=${encodeURIComponent(searchTerm)}&currentUserId=${CURRENT_USER_ID}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Search request failed');
+            
+            const users = await res.json();
+            displaySearchResults(users);
+
+        } catch (error) {
+            console.error('Error during user search:', error);
+            searchResultsListEl.innerHTML = '';
+            noResultsMessageEl.textContent = 'An error occurred during the search.';
+            noResultsMessageEl.style.display = 'block';
+            searchResultsContainerEl.style.display = 'block';
+        }
+    }
+
+    /**
+     * Displays the search results in the list.
+     */
+    function displaySearchResults(users) {
+        searchResultsListEl.innerHTML = ''; // Clear previous results
+        
+        if (users.length === 0) {
+            noResultsMessageEl.textContent = 'No users found matching your search.';
+            noResultsMessageEl.style.display = 'block';
+        } else {
+            noResultsMessageEl.style.display = 'none';
+            users.forEach(user => {
+                const li = document.createElement('li');
+                li.className = 'search-result-item';
+                li.setAttribute('data-user-id', user.user_id);
+                li.setAttribute('data-user-name', user.username);
+                
+                li.innerHTML = `
+                    <div class="search-result-info">
+                         <img src="${user.profile_picture_url || 'https://placehold.co/40x40/06b6d4/FFFFFF?text=A'}" alt="Profile" class="search-result-avatar" onerror="this.src='https://placehold.co/40x40'">
+                        <div>
+                            <strong>${user.username}</strong>
+                            <span class="role">(${user.role})</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-outline btn-chat-from-search">Chat</button>
+                `;
+                searchResultsListEl.appendChild(li);
+            });
+        }
+        searchResultsContainerEl.style.display = 'block';
+    }
+
+    // --- NEW STATS FUNCTION ---
+    /**
+     * Fetches and displays dashboard stats.
+     */
+    async function loadDashboardStats() {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/internships/alumni/${CURRENT_ALUMNI_ID}`);
+            if (!res.ok) throw new Error('Failed to fetch internships');
+            const internships = await res.json();
+            statsInternshipsEl.textContent = internships.length;
+        } catch (error) {
+            console.error('Error loading dashboard stats:', error);
+            statsInternshipsEl.textContent = 'N/A';
+        }
+    }
+    
+    // --- NEW: Load Nav Profile Pic ---
+    /**
+     * Fetches the user's profile picture for the navbar dropdown.
+     */
+    async function loadNavProfilePic() {
+        const navProfilePic = document.getElementById('navProfilePic');
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/profile/${CURRENT_USER_ID}`);
+            if (res.ok) {
+                const profile = await res.json();
+                if (profile && profile.profile_picture_url) {
+                    navProfilePic.src = profile.profile_picture_url;
+                }
+            }
+        } catch (error) {
+            console.error('Error loading nav profile pic:', error);
+        }
+    }
+
+
+    // --- Event Listeners ---
+    chatIconEl.addEventListener('click', () => {
+        chatMainContainerEl.classList.toggle('open');
+    });
+
+    closeChatBtnEl.addEventListener('click', () => {
+        chatSidebarEl.classList.remove('open'); // Hide message panel
+        currentReceiverId = null;
+        // Un-highlight chat list
+        document.querySelectorAll('.user-item').forEach(item => item.classList.remove('active'));
+    });
+
+    sendBtnEl.addEventListener('click', sendMessage);
+    chatInputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // Search Event Listeners
+    searchBtnEl.addEventListener('click', handleUserSearch);
+    searchInputEl.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleUserSearch();
+        }
+    });
+
+    // Event delegation for clicking 'Chat' on a search result
+    searchResultsListEl.addEventListener('click', (e) => {
+        const chatButton = e.target.closest('.btn-chat-from-search');
+        if (chatButton) {
+            const userItem = chatButton.closest('.search-result-item');
+            const userId = userItem.dataset.userId;
+            const userName = userItem.dataset.userName;
+            openChat(userId, userName);
+        }
+    });
+
+    // --- Initialization ---
+    fetchAndDisplayUsers();
+    connectToSocket();
+    loadDashboardStats();
+    loadNavProfilePic(); // MODIFICATION: Added function call
+});
+
+</script>
+    <footer class="footer">
+        <p>&copy; 2025 Alumni Student Management System. All rights reserved.</p>
+    </footer>
+</body>
+</html>
+
